@@ -738,7 +738,10 @@ path.expand("~") # home
 .libPaths() #libraries
 
 #Create a R startup file – edit the .Rprofile.site file in the etc folder of the installation directory
-options(tab.width = 2) ;options(width = 130);options(graphics.record=TRUE)
+local({r<-getOption("repos")
+r["CRAN"]<-"https://repo.miserver.it.umich.edu/cran/"
+options(repos=r)}) #set a CRAN mirror
+options(tab.width = 2) ;options(width = 130);options(graphics.record=TRUE); #set graphics options
 .First <- function(){
  library(data.table);library(dplyr);library(ggplot2);library(hash);
  library(scales);library(sqldf);library(ssh);library(tidyr);library(tidyverse);
