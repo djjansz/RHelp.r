@@ -727,6 +727,7 @@ lines(xR, yR, col="purple")
 #Update R to the newest versoin
 Install.packages(“installr”);
 updateR();
+
 #install useful packages
 install.packages(c("data.table","devtools","dplyr","ggplot2","hash","scales","sqldf","ssh","tidyr","tidyverse"))
 tinytex::install_tinytex()
