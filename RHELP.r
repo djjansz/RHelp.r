@@ -732,8 +732,10 @@ install.packages(c("data.table","devtools","dplyr","ggplot2","hash","scales","sq
 tinytex::install_tinytex()
 
 #Determine the path of the installation directory and the home directory
-R.home()
-path.expand("~")
+R.home() #installation
+path.expand("~") # home
+.libPaths() #libraries
+
 #Create a R startup file – edit the .Rprofile.site file in the etc folder of the installation directory
 options(tab.width = 2) ;options(width = 130);options(graphics.record=TRUE)
 .First <- function(){
