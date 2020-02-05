@@ -723,3 +723,30 @@ h=0.1; curve(kerdens, leftend, rightend, add=TRUE, col="orange")
 # try R's built-in density-estimation function:
 zz = density(SnPsince1950) ; xR = zz$x ; yR = zz$y
 lines(xR, yR, col="purple")
+
+#Update R to the newest versoin
+Install.packages(“installr”);
+updateR();
+#install useful packages
+install.packages(c("data.table","devtools","dplyr","ggplot2","hash","scales","sqldf","ssh","tidyr","tidyverse"))
+tinytex::install_tinytex()
+
+#Determine the path of the installation directory and the home directory
+R.home()
+path.expand("~")
+#Create a R startup file – edit the .Rprofile.site file in the etc folder of the installation directory
+options(tab.width = 2) ;options(width = 130);options(graphics.record=TRUE)
+.First <- function(){
+ library(data.table);library(dplyr);library(ggplot2);library(hash);
+ library(scales);library(sqldf);library(ssh);library(tidyr);library(tidyverse);
+ cat("\n\n\nDave's R Session Opened on", date(), "\n")
+ cat("The working directory is",getwd(), "\n")
+ if(file.exists("c:/R/myfunc.r")){
+        source("c:/R/myfunc.r")
+                                pause(1)  }}
+.Last <- function(){
+ cat("\nGoodbye Dave ", date(), "\n")}
+user_id=toupper(Sys.info()[["user"]])
+save_location =  sprintf("C:/Users/%s/Desktop/", user_id)
+setwd(save_location)
+pw="54321"
