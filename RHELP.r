@@ -760,3 +760,19 @@ user_id=toupper(Sys.info()[["user"]])
 save_location =  sprintf("C:/Users/%s/Desktop/", user_id)
 setwd(save_location)
 pw="54321"
+
+###################################################################################################
+##                                    DPLYR                                                      ##
+###################################################################################################
+runifdisc<-function(n, min=0, max=1) sample(min:max, n, replace=T)
+rb <- data.frame(index=1:90, term_eff_date=rep(c(Sys.Date()+ runifdisc(10,-365,0)),9),employer_group=c("A","B","C"),territory=rep(seq(from=7000,to=9200,by=50),2), policy_number=seq(from=5010,to=5900,by=10))
+rt<- data.frame(terr=seq(from=7000,to=8950,by=50),terr_differential=round(rnorm(n=40,mean=1,sd=.2),3))
+rt
+library(dplyr)
+rb <- rb %>% mutate( group_differential = case_when(employer_group=="A"~rnorm (n=1,mean=1.1,sd=.3),employer_group=="B"~1,employer_group=="C"~rnorm (n=1,mean=.9,sd=.2)),
+                     base_rate = 800,
+					 loss_cost=base_rate * group_differential)
+rb<- rb %>% left_join(.,rt,by=c("territory"="terr"))
+rb<- rb %>% mutate( territory_differential=ifelse(is.na(terr_differential),0,terr_differential)) %>% select(-c(terr_differential))
+rb
+
