@@ -762,7 +762,7 @@ setwd(save_location)
 pw="54321"
 
 ###################################################################################################
-##         Simulating Insurance Data and Graphs with Shiny                                       ##
+##                      Graphing Simulated Data with Shiny                                       ##
 ###################################################################################################
 library(dplyr);library(hash);library(shiny);library(sqldf)
 ui <- fluidPage(
