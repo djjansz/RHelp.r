@@ -762,37 +762,45 @@ setwd(save_location)
 pw="54321"
 
 ###################################################################################################
-##                                    DPLYR                                                      ##
+##         Simulating Insurance Data and Graphs with Shiny                                       ##
 ###################################################################################################
-library(dplyr);library(plotly);library(sqldf);library(hash)
-runifdisc<-function(n, min=0, max=1) sample(min:max, n, replace=T)
-rb <- data.frame(index=1:90, term_eff_date=rep(c(Sys.Date()+ runifdisc(10,-365,0)),9),risk_class=sample( 1:4, 90, replace=TRUE, prob=c(0.1, 0.6, 0.25, 0.05) ),territory=rep(seq(from=7000,to=7400,by=50),10), policy_number=seq(from=5010,to=5900,by=10))
-rt<- data.frame(terr=seq(from=7000,to=7400,by=50),terr_differential=round(rnorm(n=9,mean=1,sd=.2),3))
-rb<- rb %>% left_join(.,rt,by=c("territory"="terr"))%>% mutate( territory_differential=ifelse(is.na(terr_differential),1,terr_differential)) %>% select(-c(terr_differential))
-rb <- rb %>% mutate( risk_class_differential = case_when(risk_class==1~rnorm (n=1,mean=1.1,sd=.25),risk_class==2~1,risk_class==3~rnorm (n=1,mean=.9,sd=.2),risk_class==4~rnorm (n=1,mean=1.4,sd=.3)),
-                     base_rate = 800,
-					 loss_cost=base_rate * risk_class_differential * territory_differential)
-var_selection="risk_class"
-#var_selection="territory"
-hash_var<-hash(c("risk_class","territory"),c("Risk Class","Rating Territory"))
-rb_summary<- rb %>% group_by_at(c(var_selection)) %>% summarise(avg_loss_cost=mean(loss_cost),exposures=n_distinct(policy_number))
-rb_summary
-x<-as.numeric(as.list(sqldf(sprintf("select %1$s from rb_summary",var_selection)))[[1]])
-y1<-as.list(sqldf("select avg_loss_cost from rb_summary"))[[1]]
-ylim1=ceiling(max(y1)*1.1/1000)*1000
-y2<-as.list(sqldf("select exposures from rb_summary"))[[1]]
-ylim2=max(y2)*1.5
-aspect_ratio=max(y1)/max(y2)
-varlabel<-hash_var[[var_selection]]
-label1 = "Expected Loss Cost and Exposures by "
-p<-ggplot(rb_summary, aes(x)) 
-p<-p+geom_col(aes(y=y2* (aspect_ratio = aspect_ratio)),fill="grey")
-p<-p+ geom_line(aes(y = y1,),size=1.1,linetype=2)
-
-p<-p+scale_y_continuous(labels = dollar,breaks = seq(0,ylim1,by=round(ylim1/10,0)),
-                          sec.axis =  sec_axis(~./(aspect_ratio=aspect_ratio),name = "Earned Exposure",breaks = seq(0,ylim2,by = ylim2/4)))
-p<-p+ggtitle(label=paste(label1=label1, varlabel,label2="for All Coverages")) 
-p<-p+ylab("Average Loss Cost")
-p<-p + scale_x_continuous(name=varlabel)
-p
-
+library(dplyr);library(hash);library(shiny);library(sqldf)
+ui <- fluidPage(
+  selectInput(inputId="differential_var", label=NULL, choices=c("risk_class","territory"), selected = NULL, multiple = FALSE, selectize = TRUE, width = NULL, size = NULL),
+  plotOutput("graph1")
+) 
+#server component
+server <- function(input, output) {
+	output$graph1 <-  renderPlot({
+		runifdisc<-function(n, min=0, max=1) sample(min:max, n, replace=T)
+		rb <- data.frame(index=1:90, term_eff_date=rep(c(Sys.Date()+ runifdisc(10,-365,0)),9),risk_class=sample( 1:4, 90, replace=TRUE, prob=c(0.1, 0.6, 0.25, 0.05) ),territory=rep(seq(from=7000,to=7400,by=50),10), policy_number=seq(from=5010,to=5900,by=10))
+		rt<- data.frame(terr=seq(from=7000,to=7400,by=50),terr_differential=round(rnorm(n=9,mean=1,sd=.2),3))
+		rb<- rb %>% left_join(.,rt,by=c("territory"="terr"))%>% mutate( territory_differential=ifelse(is.na(terr_differential),1,terr_differential)) %>% select(-c(terr_differential))
+		rb <- rb %>% mutate( risk_class_differential = case_when(risk_class==1~rnorm (n=1,mean=1.1,sd=.25),risk_class==2~1,risk_class==3~rnorm (n=1,mean=.9,sd=.2),risk_class==4~rnorm (n=1,mean=1.4,sd=.3)),
+							 base_rate = 800,
+							 loss_cost=base_rate * risk_class_differential * territory_differential)
+		var_selection=input$differential_var
+		hash_var<-hash(c("risk_class","territory"),c("Risk Class","Rating Territory"))
+		rb_summary<- rb %>% group_by_at(c(var_selection)) %>% summarise(avg_loss_cost=mean(loss_cost),exposures=n_distinct(policy_number))
+		rb_summary
+		x<-as.numeric(as.list(sqldf(sprintf("select %1$s from rb_summary",var_selection)))[[1]])
+		y1<-as.list(sqldf("select avg_loss_cost from rb_summary"))[[1]]
+		ylim1=ceiling(max(y1)*1.1/1000)*1000
+		y2<-as.list(sqldf("select exposures from rb_summary"))[[1]]
+		ylim2=max(y2)*1.5
+		aspect_ratio=max(y1)/max(y2)
+		varlabel<-hash_var[[var_selection]]
+		label1 = "Expected Loss Cost and Exposures by "
+		p<-ggplot(rb_summary, aes(x)) 
+		p<-p+geom_col(aes(y=y2* (aspect_ratio = aspect_ratio)),fill="grey")
+		p<-p+ geom_line(aes(y = y1,),size=1.1,linetype=2)
+		p<-p+scale_y_continuous(labels = dollar,breaks = seq(0,ylim1,by=round(ylim1/10,0)),
+								  sec.axis =  sec_axis(~./(aspect_ratio=aspect_ratio),name = "Earned Exposure",breaks = seq(0,ylim2,by = ylim2/4)))
+		p<-p+ggtitle(label=paste0(label1=label1, varlabel)) 
+		p<-p+ylab("Average Loss Cost")
+		p<-p + scale_x_continuous(name=varlabel)
+		p
+	  }) #end of renderPlot()
+  } #end of the server component
+#run the shinyApp
+shinyApp(ui = ui, server = server)
