@@ -804,3 +804,135 @@ server <- function(input, output) {
   } #end of the server component
 #run the shinyApp
 shinyApp(ui = ui, server = server)
+
+
+###################################################################################################
+##  Simulate a Graph with Shiny - Each Selection Triggers a New Simulation and a New Plot        ##
+###################################################################################################
+library(dplyr);library(plotly);library(sqldf);library(hash);library(shiny)
+runifdisc<-function(n, min=0, max=1) sample(min:max, n, replace=T)
+ui <- fluidPage(
+  selectInput(inputId="differential_var", label=NULL, choices=c("risk_class","territory"), selected = NULL, multiple = FALSE, selectize = TRUE, width = NULL, size = NULL),
+  actionButton(inputId="refresh",label="Refresh"),
+  fluidRow(column(width=5,offset=2,plotOutput("graph1"))),
+  fluidRow(),
+  fluidRow(verbatimTextOutput("stats1"))
+) 
+
+runifdisc<-function(n, min=0, max=1) sample(min:max, n, replace=T)
+
+					 
+#server component
+server <- function(input, output) {
+
+  rb<-eventReactive(input$refresh, {data.frame(index=1:90, term_eff_date=rep(c(Sys.Date()+ runifdisc(10,-365,0)),9),risk_class=sample( 1:4, 90, replace=TRUE, prob=c(0.1, 0.6, 0.25, 0.05) ),territory=rep(seq(from=7000,to=7400,by=50),10), policy_number=seq(from=5010,to=5900,by=10))%>% left_join(.,data.frame(terr=seq(from=7000,to=7400,by=50),terr_differential=round(rnorm(n=9,mean=1,sd=.2),3)),by=c("territory"="terr"))%>% 
+  mutate( territory_differential=ifelse(is.na(terr_differential),1,terr_differential)) %>% select(-c(terr_differential)) %>%
+  mutate( risk_class_differential = case_when(risk_class==1~rnorm (n=1,mean=1.1,sd=.25),risk_class==2~1,
+  risk_class==3~rnorm (n=1,mean=.9,sd=.2),risk_class==4~rnorm (n=1,mean=1.4,sd=.3)),
+                     base_rate = 800,
+					 loss_cost=base_rate * risk_class_differential * territory_differential)})
+ 
+  rb_summary <- reactive({ rb() %>% group_by_at(c(input$differential_var)) %>% summarise(avg_loss_cost=mean(loss_cost),exposures=n_distinct(policy_number))})
+  
+  output$stats1 <- renderPrint({
+	summary(rb_summary()) 
+	})
+
+  output$graph1 <-  renderPlot({
+    hash_var<-hash(c("risk_class","territory"),c("Risk Class","Rating Territory"))
+    varlabel<-hash_var[[input$differential_var]]
+    title <- paste0('Differential Comparison for ', varlabel  )
+    xaxis <- list(title = varlabel, showgrid = TRUE)
+    yaxis <- list(side = 'left', title = 'Differential', showgrid = TRUE, zeroline = TRUE, ticks="inside")
+    yaxis2 <- list(side = 'right', overlaying = "y", title = 'Exposure %', showgrid = FALSE, zeroline = TRUE,tickformat = '.1%')
+    legend <- list(orientation = 'h', borderwidth=1, xanchor="center", x =0.5)
+    margin <- list(r=75)
+    plot_ly(data = rb_summary(),x=rb_summary()[,1],y = rb_summary()$exposures, type = 'bar') %>% add_trace(y = rb_summary()$avg_loss_cost, type = 'scatter', mode = 'lines') %>%
+      layout(title = title,
+             xaxis = xaxis,
+             yaxis = yaxis,
+             yaxis2 = yaxis2,
+             legend = legend,
+             margin = margin)
+    })
+
+} #end of the server component
+#run the shinyApp
+#trace(server,browser,exit=browser)
+shinyApp(ui = ui, server = server)
+
+###################################################################################################
+##                      Simulated Data with Shiny                                                ##
+###################################################################################################
+library(dplyr);library(plotly);library(sqldf);library(hash);library(shiny)
+
+#user defined functions
+runifdisc<-function(n, min=0, max=1) sample(min:max, n, replace=T)
+
+generatePlotly <- function(inputdf, var1, var2,var_chosen){
+  hash_var<-hash(c("risk_class","territory"),c("Risk Class","Rating Territory"))
+  varlabel<-hash_var[[var_chosen]]
+
+  title <- paste0('Differential Comparison for ', varlabel  )
+  xaxis <- list(title = varlabel, showgrid = TRUE)
+  yaxis <- list(side = 'left', title = 'Differential', showgrid = TRUE, zeroline = TRUE, ticks="inside")
+  yaxis2 <- list(side = 'right', overlaying = "y", title = 'Exposure %', showgrid = FALSE, zeroline = TRUE,tickformat = '.1%')
+  legend <- list(orientation = 'h', borderwidth=1, xanchor="center", x =0.5)
+  margin <- list(r=75)
+  plot_ly(data = inputdf,x=var1,y=var2 , type = 'bar') %>% add_trace(y = inputdf$avg_loss_cost, type = 'scatter', mode = 'lines') 
+  # %>%
+    # layout(title = title,
+    #        xaxis = xaxis,
+    #        yaxis = yaxis,
+    #        yaxis2 = yaxis2,
+    #        legend = legend,
+    #        margin = margin)
+}
+
+#ui component
+ui <- fluidPage(
+  wellPanel(selectInput(inputId="differential_var", label=NULL, choices=c("risk_class","territory"), selected = NULL, multiple = FALSE, selectize = TRUE, width = NULL, size = NULL),
+  actionButton(inputId="refresh",label="Refresh")),
+  fluidRow(column(width=5,offset=2,plotlyOutput("graph1")))
+  # 
+  # fluidRow(),
+  # fluidRow(verbatimTextOutput("stats1"))
+) 
+
+#server component
+server <- function(input, output) {
+
+
+  
+  rb<-eventReactive(input$refresh, {data.frame(index=1:90, term_eff_date=rep(c(Sys.Date()+ runifdisc(10,-365,0)),9),risk_class=sample( 1:4, 90, replace=TRUE, prob=c(0.1, 0.6, 0.25, 0.05) ),territory=rep(seq(from=7000,to=7400,by=50),10), policy_number=seq(from=5010,to=5900,by=10))%>% left_join(.,data.frame(terr=seq(from=7000,to=7400,by=50),terr_differential=round(rnorm(n=9,mean=1,sd=.2),3)),by=c("territory"="terr"))%>% 
+  mutate( territory_differential=ifelse(is.na(terr_differential),1,terr_differential)) %>% select(-c(terr_differential)) %>%
+  mutate( risk_class_differential = case_when(risk_class==1~rnorm (n=1,mean=1.1,sd=.25),risk_class==2~1,
+  risk_class==3~rnorm (n=1,mean=.9,sd=.2),risk_class==4~rnorm (n=1,mean=1.4,sd=.3)),
+                     base_rate = 800,
+					 loss_cost=base_rate * risk_class_differential * territory_differential)})
+ 
+  rb_summary <- reactive({ rb() %>% group_by_at(c(rating_var1())) %>% summarise(avg_loss_cost=mean(loss_cost),exposures=n_distinct(policy_number))})
+  rating_var1 <- reactive({if (input$differential_var=="") { return("")} else { return( input$differential_var) } })
+  graph_x<-reactive({rb_summary() %>% select(c(rating_var1()))})
+  graph_y<-reactive({rb_summary() %>% select(c("exposures"))  })
+  
+#   output$stats1 <- renderPrint({
+# 	summary(rb_summary()) 
+# 	})
+  
+  #Render the impacts plot on the UI
+  output$graph1 <- renderPlotly({
+    #only render (update) if the update actionButton is clicked, or if rerating occurs - but update actionButton must have been clicked at least once clicked
+    if (input$refresh > 0 ) {
+      isolate(
+        generatePlotly(inputdf=rb_summary(), var1=rb_summary() %>% select(c(rating_var1())),var2= rb_summary() %>% select(c("exposures")) ,var_chosen=rating_var1())
+      )
+    } else {
+      return()
+    }
+  })
+
+} #end of the server component
+#run the shinyApp
+# trace(generatePlotly,browser,exit=browser)
+shinyApp(ui = ui, server = server)
